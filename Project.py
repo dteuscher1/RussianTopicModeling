@@ -3,26 +3,28 @@ import requests
 import justext
 import urllib.parse
 
-url = "https://lyric-text.ru/viktor-tsoy/"
+urls = ["https://lyric-text.ru/viktor-tsoy/", "https://lyric-text.ru/viktor-tsoy/page-2/",
+        "https://lyric-text.ru/viktor-tsoy/page-3/", "https://lyric-text.ru/viktor-tsoy/page-4/"]
 
-# Specify header information related to your computer
-headers = {
-    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"}
-# Make a request to the web page
-response = requests.get(url, headers=headers)
-# Parse the HTML content on the page
-soup = bs(response.content, "html.parser")
-paragraphs = soup.find_all("div", {'class': 'content_box'})
 links = []
 song_title = []
-for paragraph in paragraphs:
-    anchors = paragraph.find_all('a')
-    for anchor in anchors:
-        try:
-            links.append(anchor.attrs['href'])
-            song_title.append(anchor.get_text())
-        except KeyError:
-            print("skipping this anchor because it doesn't have an href attribute")
+for url in urls:
+    # Specify header information related to your computer
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/95.0.4638.69 Safari/537.36"}
+    # Make a request to the web page
+    response = requests.get(url, headers=headers)
+    # Parse the HTML content on the page
+    soup = bs(response.content, "html.parser")
+    paragraphs = soup.find_all("div", {'class': 'content_box'})
+    for paragraph in paragraphs:
+        anchors = paragraph.find_all('a')
+        for anchor in anchors:
+            try:
+                links.append(anchor.attrs['href'])
+                song_title.append(anchor.get_text())
+            except KeyError:
+                print("skipping this anchor because it doesn't have an href attribute")
 
 
 
@@ -39,13 +41,17 @@ current_url = links[0]
 
 with open(f"songs.txt", mode='w') as outfile:
     outfile.write("Title" + "\t" + " Lyrics" + '\n')
-    for i in range(5):
+    for i in range(len(links)):
         response = requests.get(links[i], headers=headers)
         # Parse the HTML content on the page
         soup = bs(response.content, "html.parser")
         paragraphs = soup.find('div', {'class': 'content_box'}).find('p')
-        outfile.write(song_title[i] + "\t" + paragraphs.text + '\n')
-        print(f'Writing {song_title[i]}')
+        try:
+            outfile.write(song_title[i] + "\t" + paragraphs.get_text(strip=True) + '\n')
+            print(f'Writing {song_title[i]}')
+        except:
+            print("No text. Moving to next link")
+            continue
 
 
 
