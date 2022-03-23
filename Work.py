@@ -22,7 +22,7 @@ def file2str(pathway):
         return infile.read().replace("\n", " ").replace(u'\xa0', u' ')
 
 mystem = pymystem3.Mystem()
-russian_stopwords = stopwords.words("russian") + ["твой", "наш", "это"]
+russian_stopwords = stopwords.words("russian") + ["твой", "наш", "это"] 
 
 
 # Preprocess function
