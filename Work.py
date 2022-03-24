@@ -22,7 +22,8 @@ def file2str(pathway):
         return infile.read().replace("\n", " ").replace(u'\xa0', u' ')
 
 mystem = pymystem3.Mystem()
-russian_stopwords = stopwords.words("russian") + ["твой", "наш", "это"] 
+russian_stopwords = stopwords.words("russian") + ["твой", "наш", "это", "--", "\"", "–", "—",
+                                                  "…", ",", "...", "…", "»", "«", "-"]
 
 
 # Preprocess function
@@ -32,7 +33,7 @@ def preprocess_text(text):
               and token != " " \
               and token.strip() not in string.punctuation]
 
-    text = " ".join(tokens)
+    text = " ".join(tokens).replace(",", " ").replace("«", " ").replace("–", " ").replace("--", " ").replace("—", " ").replace("-", " ").replace("»", " ").replace("\"", " ").replace("::", " ")
 
     return text
 
@@ -49,7 +50,7 @@ doc_term_matrix = [corpus.doc2bow(book) for book in books_complete]
 os.chdir("../")
 Lda = gensim.models.ldamodel.LdaModel
 # Fit with 4 topics
-lda_model = Lda(doc_term_matrix, num_topics=10, id2word=corpus, passes=50)
+lda_model = Lda(doc_term_matrix, num_topics=4, id2word=corpus, passes=50)
 # Visualize the topics and save as HTML file
 visualization = gensim_models.prepare(lda_model, doc_term_matrix, corpus)
 save_html(visualization, "visualization_books.html")
@@ -68,7 +69,7 @@ doc_term_matrix = [corpus.doc2bow(song) for song in songs_complete]
 
 Lda = gensim.models.ldamodel.LdaModel
 # Fit with 4 topics
-lda_model = Lda(doc_term_matrix, num_topics=10, id2word=corpus, passes=50)
+lda_model = Lda(doc_term_matrix, num_topics=4, id2word=corpus, passes=50)
 # Visualize the topics and save as HTML file
 visualization = gensim_models.prepare(lda_model, doc_term_matrix, corpus)
 save_html(visualization, "visualization_songs.html")
