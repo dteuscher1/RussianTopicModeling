@@ -19,6 +19,7 @@ from gensim import corpora
 import gensim
 from pyLDAvis import gensim_models
 from pyLDAvis import save_html
+from plotnine import ggplot, geom_smooth, aes, labs, theme_minimal
 
 # Change directory to folder with text files for Doestoevsky's works
 os.chdir("Dostoevsky/")
@@ -76,6 +77,7 @@ def preprocess_text(text):
 # visualization = gensim_models.prepare(lda_model, doc_term_matrix, corpus)
 # save_html(visualization, "visualization_books.html")
 
+os.chdir("../")
 # Read in file of songs
 songs = pd.read_csv("songs.txt", sep="\t")
 # Combine all lyrics together
@@ -119,3 +121,42 @@ for i in range(0, len(doc_term_matrix)):
 
 # Save the topics weights by document to a .csv file
 weights_output.to_csv("topic_weights_bydoc.csv")
+
+df = pd.read_csv("topic_weights_bydoc.csv")
+df2 = pd.read_csv("song-years.csv")
+
+df3 = df2.reset_index()
+df3['doc_id'] = df3.index
+
+df4 = pd.merge(df,df3[['doc_id','Year', 'Title']],on='doc_id', how='left')
+total_docs = df4.groupby('Year')['doc_id'].apply(lambda x: len(x.unique())).reset_index()
+total_docs.columns = ['Year', 'total_docs']
+#total_docs.to_csv("total_doc_year.csv")
+df_avg = df4.groupby(['Year', 'topic']).agg({'prob_weight':'sum'}).reset_index()
+df_avg = df_avg.merge(total_docs, on='Year', how="left")
+df_avg['average_weight'] = df_avg['prob_weight'] / df_avg['total_docs']
+
+
+print(df_avg)
+print(visualization.topic_order)
+#[2, 7, 3, 6, 5, 8, 9, 4, 1, 10]
+
+topic_labels = ['Topic 1', "Topic 2", "Topic 3", "Topic 4"]
+topic_id = [0, 1, 2, 3]
+data_tuple = list(zip(topic_id, topic_labels))
+df_labels = pd.DataFrame(data_tuple, columns = ['topic', 'topic_label'])
+print(df_labels)
+#merge labels into year weights data
+df_avg2 = df_avg.merge(df_labels, on='topic')
+#save
+#df_avg2.to_csv("year_topic_weights.csv")
+
+#now create a final per-document data-frame for broader analysis
+df12 = pd.merge(df4,df_avg2[['Year', 'topic', 'average_weight', 'total_docs', 'topic_label']],on=['Year', 'topic'], how='left')
+print(df12.columns)
+
+p = (ggplot(df12, aes(x = 'Year', y = 'average_weight', color = 'topic_label'))
+ + geom_smooth()  +
+theme_minimal())
+
+print(p)
