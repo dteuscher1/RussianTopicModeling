@@ -1,7 +1,7 @@
 """
 Author: David Teuscher
-Last Edited: 30.03.22
-This script takes books by Dostoevsky and songs by Viktor Tsoy
+Last Edited: 02.04.22
+This script takes songs by Viktor Tsoy
 and does topic modeling for each group. Then the weights for
 each topic over time are calculated and the trends over time
 are shown
@@ -9,8 +9,6 @@ are shown
 
 # Import modules
 import pandas as pd
-import os
-import re
 from nltk.corpus import stopwords
 import string
 import pymystem3
@@ -18,11 +16,6 @@ from gensim import corpora
 import gensim
 from pyLDAvis import gensim_models
 from pyLDAvis import save_html
-
-# Change directory to folder with text files for Doestoevsky's works
-os.chdir("Dostoevsky/")
-
-
 
 # Define a function to take a text file and turn it into a string
 def file2str(pathway):
@@ -33,7 +26,7 @@ def file2str(pathway):
 mystem = pymystem3.Mystem()
 # Extract Russian stopwords and add additional ones to the list as well
 russian_stopwords = stopwords.words("russian") + ["твой", "наш", "это", "--", "\"", "–", "—",
-                                                  "…", ",", "...", "…", "»", "«", "-", "м", "когда", "э", "24", "то", "припев", "то", "весь", ":", "эй", "кто", "свой", "алеша", "свидригайлов", "митя", "старообрядец", "'", "иван", "федорович", "петрович", "ивановна", "наташа", "который", "!..", ")", "степан", "соня", "какой", "что", "нибудь", "ваш", "очень", ]
+                                                  "…", ",", "...", "…", "»", "«", "-", "м", "когда", "э", "24", "то", "припев", "то", "весь", ":", "эй", "кто", "свой"]
 
 
 # Preprocess function for the text
@@ -47,35 +40,35 @@ def preprocess_text(text):
 
     return text
 
-# Clean up novels
-# Get the filenames for all the files
-filenames = [i for i in os.listdir() if re.search(r"\.txt", i)]
 
-# # Make the text of all the files a string
-doc_complete = [file2str(i) for i in filenames]
+# Read in file of songs
+songs = pd.read_csv("songs.txt", sep="\t")
+# Combine all lyrics together
+song_lyrics = []
+for song in songs[' Lyrics']:
+    lyrics = song.replace("\n", " ").replace("...", " ")
+    song_lyrics.append(lyrics)
 
-# Clean up the text from the books
-books_complete = [preprocess_text(i) for i in doc_complete]
-# Split the books up into words
-books_complete = [book.split() for book in books_complete]
+# Clean up the text for the lyrics
+songs_complete = [preprocess_text(i) for i in song_lyrics]
+# Split the lyrics for each song into words
+songs_complete = [song.split() for song in songs_complete]
+# Create a corpora from the song lyrics
+corpus = corpora.Dictionary(songs_complete)
 
-# Create a corpora from the books
-corpus = corpora.Dictionary(books_complete)
+# Create the document term matrix for the songs
+doc_term_matrix = [corpus.doc2bow(song) for song in songs_complete]
 
-# Create the document term matrix
-doc_term_matrix = [corpus.doc2bow(book) for book in books_complete]
-
-# Move back to the original directory
-os.chdir("../")
 # Initialize the LDA model
 Lda = gensim.models.ldamodel.LdaModel
-# # Fit with 4 topics
-lda_model = Lda(doc_term_matrix, num_topics=3, id2word=corpus, passes=50, random_state=360)
-# # Visualize the topics and save as HTML file
+# Fit with 4 topics
+lda_model = Lda(doc_term_matrix, num_topics=3, id2word=corpus, passes=50, random_state= 360)
+# Visualize the topics and save as HTML file
 visualization = gensim_models.prepare(lda_model, doc_term_matrix, corpus)
-save_html(visualization, "visualization_books.html")
+save_html(visualization, "visualization_songs.html")
 
-# Initialize a data frame to save the weights for each document and topic
+# Create an empty data frame to contain the topic and the weight of the topic for each
+# document
 weights_output = pd.DataFrame(columns = ['topic', 'prob_weight', 'doc_id'])
 
 # Loop through each document and pull off the weights for each topic
@@ -90,11 +83,11 @@ for i in range(0, len(doc_term_matrix)):
     weights_output = weights_output.append(weights_df)
 
 # Save the topics weights by document to a .csv file
-weights_output.to_csv("topic_weights_bydoc_songs.csv")
+weights_output.to_csv("topic_weights_bydoc.csv")
 
-# Load in the topic weights and the years for each book
-df = pd.read_csv("topic_weights_bydoc_songs.csv")
-df2 = pd.read_csv("Doestoevsky_Works_Years.csv")
+# Load in the topic weights and the years for each song
+df = pd.read_csv("topic_weights_bydoc.csv")
+df2 = pd.read_csv("song-years.csv")
 
 # Reset the index and add the document number using the index
 df3 = df2.reset_index()
@@ -115,11 +108,11 @@ df_avg = df_avg.merge(total_docs, on='Year', how="left")
 df_avg['average_weight'] = df_avg['prob_weight'] / df_avg['total_docs']
 
 # Create a dataframe of topic labels
-topic_labels = ["Люди (People)", "Психология людей (Psychology of humans)", "Действия (Actions)"]
+topic_labels = ["Любовь (Love)", "Желания (Desires)", "Повседневная жизнь (Everyday life)"]
 topic_id = [0, 1, 2]
 data_tuple = list(zip(topic_id, topic_labels))
 df_labels = pd.DataFrame(data_tuple, columns = ['topic', 'topic_label'])
 
 # Merge labels into year weights data and save to .csv file
 df_avg2 = df_avg.merge(df_labels, on='topic')
-df_avg2.to_csv("books_weights.csv")
+df_avg2.to_csv("songs_weights.csv")
